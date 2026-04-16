@@ -205,6 +205,29 @@ await loops.sendTransactional(ctx, {
     name: "John",
     orderId: "12345",
   },
+  attachments: [
+    {
+      filename: "invoice.pdf",
+      contentType: "application/pdf",
+      data: base64Pdf,
+    },
+  ],
+});
+```
+
+You can also attach files stored in Convex storage by passing a `storageId` instead of inline base64 data:
+
+```typescript
+await loops.sendTransactional(ctx, {
+  transactionalId: "template-id-from-loops",
+  email: "user@example.com",
+  attachments: [
+    {
+      filename: "delivery-note.pdf",
+      contentType: "application/pdf",
+      storageId,
+    },
+  ],
 });
 ```
 

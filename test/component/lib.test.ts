@@ -1,6 +1,11 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { api, internal } from "../../src/component/_generated/api";
-import { mockContactCreate, resetMocks, setupMockFetch } from "./mock-setup";
+import {
+	getLastRequestBody,
+	mockContactCreate,
+	resetMocks,
+	setupMockFetch,
+} from "./mock-setup";
 import { convexTest } from "./setup.test";
 
 describe("component lib", () => {
@@ -85,6 +90,51 @@ describe("component lib", () => {
 
 		// Note: We can't easily verify deletion without direct DB access
 		// but the API call succeeded
+	});
+
+	test("sendTransactional includes attachments in the Loops payload", async () => {
+		const t = convexTest();
+		const result = await t.action(api.actions.sendTransactional, {
+			apiKey: "test-api-key",
+			transactionalId: "txn_123",
+			email: "recipient@example.com",
+			dataVariables: {
+				subject: "Attachment test",
+			},
+			attachments: [
+				{
+					filename: "delivery-note.pdf",
+					contentType: "application/pdf",
+					data: "UERG",
+				},
+			],
+		});
+
+		expect(result.success).toBe(true);
+
+		const requestBody = getLastRequestBody(
+			"https://app.loops.so/api/v1/transactional",
+		) as {
+			attachments?: Array<{
+				contentType: string;
+				data: string;
+				filename: string;
+			}>;
+			dataVariables?: Record<string, unknown>;
+			email?: string;
+			transactionalId?: string;
+		};
+
+		expect(requestBody.transactionalId).toBe("txn_123");
+		expect(requestBody.email).toBe("recipient@example.com");
+		expect(requestBody.dataVariables?.subject).toBe("Attachment test");
+		expect(requestBody.attachments).toEqual([
+			{
+				filename: "delivery-note.pdf",
+				contentType: "application/pdf",
+				data: "UERG",
+			},
+		]);
 	});
 
 	test("countContacts returns correct count", async () => {

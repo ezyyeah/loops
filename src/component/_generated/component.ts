@@ -116,6 +116,12 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         "internal",
         {
           apiKey: string;
+          attachments?: Array<{
+            contentType?: string;
+            data?: string;
+            filename?: string;
+            storageId?: string;
+          }>;
           dataVariables?: Record<string, any>;
           email: string;
           transactionalId: string;

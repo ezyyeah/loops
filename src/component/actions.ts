@@ -12,6 +12,121 @@ import {
 	successWithWarningResponseValidator,
 } from "./validators";
 
+function normalizeTransactionalAttachments(
+	attachments: Array<{
+		filename?: string;
+		contentType?: string;
+		data?: string;
+		storageId?: string;
+	}> | undefined,
+): Array<
+	| {
+			filename: string;
+			contentType: string;
+			data: string;
+	  }
+	| {
+			filename: string;
+			contentType: string;
+			storageId: string;
+	  }
+> | undefined {
+	if (!attachments || attachments.length === 0) {
+		return undefined;
+	}
+
+	return attachments.map((attachment, index) => {
+		const filename = attachment.filename?.trim();
+		const contentType = attachment.contentType?.trim();
+		const inlineData = attachment.data?.trim();
+		const storageId = attachment.storageId?.trim();
+
+		if (!filename) {
+			throw new Error(
+				`Transactional attachment ${index + 1} is missing a filename.`,
+			);
+		}
+
+		if (!contentType) {
+			throw new Error(
+				`Transactional attachment ${index + 1} is missing a contentType.`,
+			);
+		}
+
+		if (!inlineData && !storageId) {
+			throw new Error(
+				`Transactional attachment ${index + 1} must include either data or storageId.`,
+			);
+		}
+
+		if (inlineData) {
+			return {
+				filename,
+				contentType,
+				data: inlineData,
+			};
+		}
+
+		return {
+			filename,
+			contentType,
+			storageId: storageId!,
+		};
+	});
+}
+
+async function resolveTransactionalAttachments(
+	ctx: {
+		storage: {
+			get(storageId: string): Promise<Blob | null>;
+		};
+	},
+	attachments: ReturnType<typeof normalizeTransactionalAttachments>,
+) {
+	if (!attachments || attachments.length === 0) {
+		return undefined;
+	}
+
+	const resolvedAttachments: Array<{
+		filename: string;
+		contentType: string;
+		data: string;
+	}> = [];
+
+	for (const attachment of attachments) {
+		if ("data" in attachment) {
+			resolvedAttachments.push(attachment);
+			continue;
+		}
+
+		const file = await ctx.storage.get(attachment.storageId);
+		if (!file) {
+			throw new Error(
+				`Transactional attachment storage file not found: ${attachment.storageId}`,
+			);
+		}
+
+		const arrayBuffer = await file.arrayBuffer();
+		resolvedAttachments.push({
+			filename: attachment.filename,
+			contentType: attachment.contentType,
+			data: Buffer.from(arrayBuffer).toString("base64"),
+		});
+	}
+
+	const totalRequestBytes = resolvedAttachments.reduce((sum, attachment) => {
+		return sum + Buffer.byteLength(attachment.data, "utf8");
+	}, 0);
+
+	if (totalRequestBytes > 3_500_000) {
+		throw new Error(
+			"Transactional attachments are too large for Loops. Keep the total encoded attachment payload under 3.5 MB.",
+		);
+	}
+
+	return resolvedAttachments;
+}
+
 /**
  * Add or update a contact in Loops
  * This function tries to create a contact, and if the email already exists (409),
@@ -187,15 +302,30 @@ export const sendTransactional = action({
 		transactionalId: v.string(),
 		email: v.string(),
 		dataVariables: v.optional(v.record(v.string(), v.any())),
+		attachments: v.optional(
+			v.array(
+				v.object({
+					filename: v.optional(v.string()),
+					contentType: v.optional(v.string()),
+					data: v.optional(v.string()),
+					storageId: v.optional(v.string()),
+				}),
+			),
+		),
 	},
 	returns: successWithMessageIdResponseValidator,
 	handler: async (ctx, args) => {
+		const resolvedAttachments = await resolveTransactionalAttachments(
+			ctx,
+			normalizeTransactionalAttachments(args.attachments),
+		);
 		const response = await loopsFetch(args.apiKey, "/transactional", {
 			method: "POST",
 			json: {
 				transactionalId: args.transactionalId,
 				email: args.email,
 				dataVariables: args.dataVariables,
+				attachments: resolvedAttachments,
 			},
 		});
 

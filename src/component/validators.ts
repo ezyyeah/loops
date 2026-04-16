@@ -25,6 +25,16 @@ export const transactionalEmailValidator = v.object({
 	transactionalId: v.optional(v.string()),
 	email: v.string(),
 	dataVariables: v.optional(v.record(v.string(), v.any())),
+	attachments: v.optional(
+		v.array(
+			v.object({
+				filename: v.optional(v.string()),
+				contentType: v.optional(v.string()),
+				data: v.optional(v.string()),
+				storageId: v.optional(v.string()),
+			}),
+		),
+	),
 });
 
 /**

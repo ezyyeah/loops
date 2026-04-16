@@ -19,6 +19,14 @@ export interface TransactionalEmailOptions {
 	transactionalId: string;
 	email: string;
 	dataVariables?: Record<string, unknown>;
+	attachments?: TransactionalAttachment[];
+}
+
+export interface TransactionalAttachment {
+	filename?: string;
+	contentType?: string;
+	data?: string;
+	storageId?: string;
 }
 
 export interface EventOptions {
@@ -440,6 +448,16 @@ export class Loops {
 					transactionalId: v.string(),
 					email: v.string(),
 					dataVariables: v.optional(v.any()),
+					attachments: v.optional(
+						v.array(
+							v.object({
+								filename: v.optional(v.string()),
+								contentType: v.optional(v.string()),
+								data: v.optional(v.string()),
+								storageId: v.optional(v.string()),
+							}),
+						),
+					),
 				},
 				handler: async (ctx, args) => {
 					return await this.sendTransactional(ctx, args);

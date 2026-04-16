@@ -153,6 +153,7 @@ http.route({
 				transactionalId: payload.transactionalId,
 				email: payload.email,
 				dataVariables: payload.dataVariables,
+				attachments: payload.attachments,
 			});
 			return jsonResponse(data);
 		} catch (error) {

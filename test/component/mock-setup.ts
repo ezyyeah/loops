@@ -6,12 +6,14 @@ const LOOPS_API_BASE_URL = "https://app.loops.so/api/v1";
 
 // Store mock responses
 const mockResponses: Map<string, Response> = new Map();
+const requestBodies: Map<string, unknown> = new Map();
 
 /**
  * Reset all mocks
  */
 export function resetMocks() {
 	mockResponses.clear();
+	requestBodies.clear();
 }
 
 /**
@@ -55,6 +57,14 @@ export function setupMockFetch() {
 			}
 
 			// Check if we have a custom mock response template
+			if (init?.body && typeof init.body === "string") {
+				try {
+					requestBodies.set(url, JSON.parse(init.body));
+				} catch {
+					requestBodies.set(url, init.body);
+				}
+			}
+
 			if (mockResponses.has(url)) {
 				// Clone the template to create a new instance
 				const template = mockResponses.get(url);
@@ -141,6 +151,10 @@ export function setupMockFetch() {
  */
 export function mockApiCall(url: string, response: Response) {
 	mockResponses.set(url, response);
+}
+
+export function getLastRequestBody(url: string) {
+	return requestBodies.get(url);
 }
 
 /**

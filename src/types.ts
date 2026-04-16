@@ -45,6 +45,7 @@ export interface TransactionalPayload {
 	transactionalId?: string;
 	email?: string;
 	dataVariables?: Record<string, unknown>;
+	attachments?: TransactionalAttachmentPayload[];
 }
 
 export interface EventPayload {
@@ -58,4 +59,11 @@ export interface TriggerPayload {
 	email?: string;
 	dataVariables?: Record<string, unknown>;
 	eventName?: string;
+}
+
+export interface TransactionalAttachmentPayload {
+	filename?: string;
+	contentType?: string;
+	data?: string;
+	storageId?: string;
 }
