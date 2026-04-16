@@ -127,7 +127,7 @@ async function resolveTransactionalAttachments(
 	}
 
 	const totalRequestBytes = resolvedAttachments.reduce((sum, attachment) => {
-		return sum + Buffer.byteLength(attachment.data, "utf8");
+		return sum + attachment.data.length;
 	}, 0);
 
 	if (totalRequestBytes > 3_500_000) {
