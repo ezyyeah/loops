@@ -92,6 +92,18 @@ async function resolveTransactionalAttachments(
 		contentType: string;
 		data: string;
 	}> = [];
+	const arrayBufferToBase64 = (arrayBuffer: ArrayBuffer) => {
+		const bytes = new Uint8Array(arrayBuffer);
+		let binary = "";
+		const chunkSize = 0x8000;
+
+		for (let index = 0; index < bytes.length; index += chunkSize) {
+			const chunk = bytes.subarray(index, index + chunkSize);
+			binary += String.fromCharCode(...chunk);
+		}
+
+		return btoa(binary);
+	};
 
 	for (const attachment of attachments) {
 		if ("data" in attachment) {
@@ -110,7 +122,7 @@ async function resolveTransactionalAttachments(
 		resolvedAttachments.push({
 			filename: attachment.filename,
 			contentType: attachment.contentType,
-			data: Buffer.from(arrayBuffer).toString("base64"),
+			data: arrayBufferToBase64(arrayBuffer),
 		});
 	}
 
