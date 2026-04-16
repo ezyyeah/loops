@@ -11,9 +11,30 @@ const allowedOrigin =
 
 export const LOOPS_API_BASE_URL = "https://app.loops.so/api/v1";
 
+const extractLoopsErrorDetails = (errorText: string) => {
+	try {
+		const parsed = JSON.parse(errorText) as {
+			message?: unknown;
+			path?: unknown;
+		};
+		const message =
+			typeof parsed?.message === "string" ? parsed.message.trim() : "";
+		const path = typeof parsed?.path === "string" ? parsed.path.trim() : "";
+		return {
+			message,
+			path,
+		};
+	} catch (_error) {
+		return {
+			message: "",
+			path: "",
+		};
+	}
+};
+
 export const sanitizeLoopsError = (
 	status: number,
-	_errorText: string,
+	errorText: string,
 ): Error => {
 	if (status === 401 || status === 403) {
 		return new Error("Authentication failed. Please check your API key.");
@@ -27,6 +48,18 @@ export const sanitizeLoopsError = (
 	if (status >= 500) {
 		return new Error("Loops service error. Please try again later.");
 	}
+
+	const details = extractLoopsErrorDetails(errorText);
+	if (details.message) {
+		const suffix = details.path ? ` [${details.path}]` : "";
+		return new Error(`Loops API error (${status}): ${details.message}${suffix}`);
+	}
+
+	const trimmedErrorText = errorText.trim();
+	if (trimmedErrorText) {
+		return new Error(`Loops API error (${status}): ${trimmedErrorText}`);
+	}
+
 	return new Error(`Loops API error (${status}). Please try again.`);
 };
 
